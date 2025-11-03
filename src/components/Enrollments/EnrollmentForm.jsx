@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import html2pdf from "html2pdf.js";
 import Button from "../shared/Button";
 import Input from "../shared/Input";
-import { registerEnrollment, fetchGrades, downloadEnrollmentReceipt } from "../services/EnrollmentService";
+import { registerEnrollment, fetchGrades, downloadEnrollmentReceipt, fetchEnrollmentById } from "../services/EnrollmentService";
 import { getStudentById } from "../services/StudentService";
 import { createPayment } from "../services/PaymentService";
 import EnrollmentInitialStep from "./EnrollmentInitialStep";
 import StudentSearchModal from "../Estudiantes/StudentSearchModal";
 // import GuardianSearchModal from "./GuardianSearchModal"; // eliminado, ya no se usa
 import { useToast } from "../ui/Toast";
+import EnrollmentReceipt from "./EnrollmentReceipt";
 
 // Modal simple reutilizable
 const Modal = ({ open, onClose, title, children }) => {
@@ -56,6 +58,9 @@ const EnrollmentForm = ({ onSuccess }) => {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [enrollmentId, setEnrollmentId] = useState(null);
+  const [showHtmlReceipt, setShowHtmlReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState(null);
+  const receiptRef = useRef(null);
 
   useEffect(() => {
     // Generar código de matrícula automático
@@ -96,7 +101,11 @@ const EnrollmentForm = ({ onSuccess }) => {
   const handleSelectStudent = async (selectedStudent) => {
     setError("");
     try {
-      const details = await getStudentById(selectedStudent.id);
+      const studentId = selectedStudent.estudiante_id || selectedStudent.id;
+      if (!studentId) {
+        throw new Error("ID de estudiante no encontrado");
+      }
+      const details = await getStudentById(studentId);
       setStudent(details);
       setStudentDetails(details);
       // Por defecto autocompletar madre
@@ -173,7 +182,8 @@ const EnrollmentForm = ({ onSuccess }) => {
     setError("");
     setSuccess("");
     
-    if (!student || !student.id) {
+    const studentId = student?.estudiante_id || student?.id;
+    if (!student || !studentId) {
       setError("Debes seleccionar un alumno");
       return;
     }
@@ -189,7 +199,7 @@ const EnrollmentForm = ({ onSuccess }) => {
     setLoading(true);
     try {
       const res = await registerEnrollment({
-        student_id: student.id,
+        student_id: studentId,
         grade_id: form.grade_id,
         enrollment_date: form.enrollment_date,
         academic_year: form.academic_year,
@@ -204,7 +214,7 @@ const EnrollmentForm = ({ onSuccess }) => {
         const discPct = parseFloat(form.discount_percent || 0);
         const payAmt = parseFloat(form.payment_amount || 0);
         await createPayment({
-          student_id: student.id,
+          student_id: studentId,
           enrollment_id: res.id,
           type: 'Matricula',
           amount: amountNum,
@@ -257,6 +267,147 @@ const EnrollmentForm = ({ onSuccess }) => {
         type: "error", 
         duration: 3000 
       });
+    }
+  };
+
+  const buildReceiptData = async () => {
+    const enr = await fetchEnrollmentById(enrollmentId);
+    const isNew = situation === "Nuevo";
+
+    // Nombres sin apellidos (si tenemos ambos)
+    const surnames = (student?.surnames || '').trim();
+    let namesOnly = (student?.full_name || '').trim();
+    if (surnames && namesOnly.toLowerCase().startsWith(surnames.toLowerCase())) {
+      namesOnly = namesOnly.substring(surnames.length).trim();
+    }
+
+    // Datos de padre/madre desde detalles del estudiante si existen
+    const fatherData = {
+      fullName: studentDetails?.father_full_name || '',
+      dni: studentDetails?.father_dni || '',
+      phone: studentDetails?.father_phone || ''
+    };
+    const motherData = {
+      fullName: studentDetails?.mother_full_name || '',
+      dni: studentDetails?.mother_dni || '',
+      phone: studentDetails?.mother_phone || ''
+    };
+
+    // Pagos: inscripción solo si es alumno nuevo
+    const tuition = parseFloat(form.tuition_amount || 0) || 0;
+    const inscription = isNew ? (parseFloat(form.payment_amount || 0) || 0) : 0;
+    const discountPct = parseFloat(form.discount_percent || 0) || 0;
+    const tuitionAfterDiscount = Math.max(0, tuition - (tuition * discountPct / 100));
+    const totalAmount = tuitionAfterDiscount + inscription;
+
+    return {
+      year: parseInt(form.academic_year) || new Date().getFullYear(),
+      isNew,
+      student: {
+        surnames: surnames || "",
+        names: namesOnly || "",
+        dni: student?.identity_document || "",
+        address: student?.address || "",
+        gradeName: selectedGradeInfo?.gradeName || enr?.grade || "",
+        gradeLevel: selectedGradeInfo?.level || "",
+        provenance: isNew ? (form.previous_school || "") : "",
+        provenanceCode: "",
+      },
+      father: fatherData,
+      mother: motherData,
+      payments: {
+        inscription: isNew && inscription > 0 ? `S/ ${inscription.toFixed(2)}` : "",
+        tuition: tuition > 0 ? `S/ ${tuition.toFixed(2)}` : "",
+        date: (form.payment_date ? new Date(form.payment_date) : new Date()).toLocaleDateString(),
+        total: totalAmount > 0 ? `S/ ${totalAmount.toFixed(2)}` : ""
+      }
+    };
+  };
+
+  const handlePrintHtml = async () => {
+    if (!enrollmentId) return;
+    try {
+      const data = await buildReceiptData();
+      setReceiptData(data);
+      setShowHtmlReceipt(true);
+      setTimeout(() => window.print(), 300);
+    } catch (e) {
+      toast.show({ title: "Error", message: "No se pudo preparar la ficha HTML", type: "error", duration: 3500 });
+    }
+  };
+
+  const handleDownloadReceiptPdf = async () => {
+    if (!enrollmentId) return;
+    try {
+      const data = await buildReceiptData();
+      setReceiptData(data);
+      // Espera a que el componente se renderice en el DOM oculto
+      setTimeout(() => {
+        const el = receiptRef.current;
+        if (!el) return;
+        const filename = `Ficha_${student?.identity_document || 'matricula'}.pdf`;
+        html2pdf()
+          .set({
+            filename,
+            margin: 10,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: {
+              scale: 2,
+              useCORS: true,
+                  allowTaint: true,
+                  imageTimeout: 0,
+              background: '#ffffff',
+              foreignObjectRendering: true,
+              onclone: (clonedDoc) => {
+                // Asegura fondo blanco global en el documento clonado
+                clonedDoc.documentElement.style.background = '#ffffff';
+                clonedDoc.body.style.background = '#ffffff';
+                // Quita el tema para evitar variables que resuelvan a OKLCH
+                clonedDoc.documentElement.removeAttribute('data-theme');
+
+                // Inyecta un estilo fuerte para neutralizar colores OKLCH
+                const style = clonedDoc.createElement('style');
+                style.id = 'pdf-oklch-fix';
+                style.textContent = `
+                  [data-pdf-root="1"], [data-pdf-root="1"] * {
+                    background: #ffffff !important;
+                    background-color: #ffffff !important;
+                    color: #000000 !important;
+                    border-color: #000000 !important;
+                    box-shadow: none !important;
+                    outline-color: #000000 !important;
+                  }
+                `;
+                clonedDoc.head.appendChild(style);
+
+                // Reemplaza cualquier valor computado residual con OKLCH en el scope
+                const scope = clonedDoc.querySelector('[data-pdf-root="1"]');
+                if (!scope) return;
+                const all = scope.querySelectorAll('*');
+                all.forEach((node) => {
+                  const cs = clonedDoc.defaultView.getComputedStyle(node);
+                  const bg = cs.backgroundColor || '';
+                  if (bg.includes('oklch')) node.style.backgroundColor = '#ffffff';
+                  const color = cs.color || '';
+                  if (color.includes('oklch')) node.style.color = '#000000';
+                  const bcTop = cs.borderTopColor || '';
+                  const bcRight = cs.borderRightColor || '';
+                  const bcBottom = cs.borderBottomColor || '';
+                  const bcLeft = cs.borderLeftColor || '';
+                  if (bcTop.includes('oklch')) node.style.borderTopColor = '#000000';
+                  if (bcRight.includes('oklch')) node.style.borderRightColor = '#000000';
+                  if (bcBottom.includes('oklch')) node.style.borderBottomColor = '#000000';
+                  if (bcLeft.includes('oklch')) node.style.borderLeftColor = '#000000';
+                });
+              }
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          })
+          .from(el)
+          .save();
+      }, 200);
+    } catch (e) {
+      toast.show({ title: "Error", message: "No se pudo generar el PDF", type: "error", duration: 3500 });
     }
   };
 
@@ -669,6 +820,24 @@ const EnrollmentForm = ({ onSuccess }) => {
               </Button>
               <Button
                 type="button"
+                onClick={handleDownloadReceiptPdf}
+                variant="primary"
+                size="xl"
+                className="px-8"
+              >
+                🖨️ Descargar Ficha (PDF)
+              </Button>
+              <Button
+                type="button"
+                onClick={handlePrintHtml}
+                variant="secondary"
+                size="xl"
+                className="px-12"
+              >
+                Imprimir Ficha
+              </Button>
+              <Button
+                type="button"
                 onClick={handleExit}
                 variant="secondary"
                 size="xl"
@@ -711,6 +880,28 @@ const EnrollmentForm = ({ onSuccess }) => {
         title="Buscar Estudiante"
       />
       {/* Eliminado modal de apoderado */}
+
+      {showHtmlReceipt && receiptData && (
+        <div className="fixed inset-0 z-40 bg-white overflow-auto p-6">
+          <div className="no-print mb-4 flex justify-end">
+            <button onClick={() => setShowHtmlReceipt(false)} className="btn">Cerrar vista</button>
+          </div>
+          <EnrollmentReceipt {...receiptData} />
+        </div>
+      )}
+
+      {/* Contenedor oculto para exportar a PDF la misma ficha HTML */}
+      <div style={{ position: 'fixed', left: 0, top: 0, opacity: 0, pointerEvents: 'none', zIndex: -1 }} aria-hidden>
+        {receiptData && (
+          <div
+            ref={receiptRef}
+            data-pdf-root="1"
+            style={{ background: '#ffffff', color: '#000000', width: '210mm' }}
+          >
+            <EnrollmentReceipt {...receiptData} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
