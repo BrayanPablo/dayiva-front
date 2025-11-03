@@ -275,8 +275,8 @@ const EnrollmentForm = ({ onSuccess }) => {
     const isNew = situation === "Nuevo";
 
     // Nombres sin apellidos (si tenemos ambos)
-    const surnames = (student?.surnames || '').trim();
-    let namesOnly = (student?.full_name || '').trim();
+    const surnames = (student?.apellidos || student?.surnames || '').trim();
+    let namesOnly = (student?.nombres || student?.full_name || '').trim();
     if (surnames && namesOnly.toLowerCase().startsWith(surnames.toLowerCase())) {
       namesOnly = namesOnly.substring(surnames.length).trim();
     }
@@ -306,8 +306,8 @@ const EnrollmentForm = ({ onSuccess }) => {
       student: {
         surnames: surnames || "",
         names: namesOnly || "",
-        dni: student?.identity_document || "",
-        address: student?.address || "",
+        dni: student?.dni || student?.identity_document || "",
+        address: student?.dirección || student?.address || "",
         gradeName: selectedGradeInfo?.gradeName || enr?.grade || "",
         gradeLevel: selectedGradeInfo?.level || "",
         provenance: isNew ? (form.previous_school || "") : "",
@@ -345,7 +345,7 @@ const EnrollmentForm = ({ onSuccess }) => {
       setTimeout(() => {
         const el = receiptRef.current;
         if (!el) return;
-        const filename = `Ficha_${student?.identity_document || 'matricula'}.pdf`;
+        const filename = `Ficha_${student?.dni || student?.identity_document || 'matricula'}.pdf`;
         html2pdf()
           .set({
             filename,
@@ -542,7 +542,7 @@ const EnrollmentForm = ({ onSuccess }) => {
               </label>
               <input
                 type="text"
-                value={student?.identity_document || ''}
+                value={student?.dni || student?.identity_document || ''}
                 readOnly
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-lg"
               />
@@ -553,7 +553,7 @@ const EnrollmentForm = ({ onSuccess }) => {
               </label>
               <input
                 type="text"
-                value={student?.full_name || ''}
+                value={student?.nombres || student?.full_name || ''}
                 readOnly
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-lg"
               />
@@ -564,7 +564,7 @@ const EnrollmentForm = ({ onSuccess }) => {
               </label>
               <input
                 type="text"
-                value={student?.surnames || ''}
+                value={student?.apellidos || student?.surnames || ''}
                 readOnly
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-lg"
               />
@@ -591,7 +591,7 @@ const EnrollmentForm = ({ onSuccess }) => {
               </label>
               <input
                 type="text"
-                value={student?.birth_date ? new Date(student.birth_date).toLocaleDateString() : ''}
+                value={(student?.fecha_nacimiento || student?.birth_date) ? new Date(student?.fecha_nacimiento || student?.birth_date).toLocaleDateString() : ''}
                 readOnly
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-lg"
               />
@@ -602,7 +602,7 @@ const EnrollmentForm = ({ onSuccess }) => {
               </label>
               <input
                 type="text"
-                value={student?.gender || ''}
+                value={student?.sexo || student?.gender || ''}
                 readOnly
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-lg"
               />
@@ -613,7 +613,7 @@ const EnrollmentForm = ({ onSuccess }) => {
               </label>
               <input
                 type="text"
-                value={student?.city || ''}
+                value={student?.ciudad || student?.city || ''}
                 readOnly
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-lg"
               />
@@ -624,7 +624,7 @@ const EnrollmentForm = ({ onSuccess }) => {
               </label>
               <input
                 type="text"
-                value={student?.address || ''}
+                value={student?.dirección || student?.address || ''}
                 readOnly
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-lg"
               />
