@@ -102,19 +102,57 @@ const PaymentsPage = () => {
     { key: 'payment_date', label: 'Fecha de Pago', sortable: true, render: (v) => (
       v ? new Date(v).toLocaleDateString('es-PE') : '-'
     ) },
-    { key: 'computed_status', label: 'Estado', sortable: true, render: (v, row) => {
-      let status = v;
-      if (!status) {
-        const type = (row.type || '').toString();
-        const siblings = Number(row.num_siblings || 0);
-        const required = type === 'Mensualidad' ? Math.max(0, 250 - siblings * 30) : Number(row.total_amount ?? row.amount ?? 0);
-        const paid = Number(row.paid_amount ?? row.amount ?? 0);
-        status = paid >= required ? 'Cancelado' : 'Pendiente';
+    { key: 'status', label: 'Estado', sortable: true, render: (v, row) => {
+      // Usar el estado que viene del backend (Pendiente, Parcial, Pagado)
+      let status = v || row.estado || 'Pendiente';
+      
+      // Normalizar nombres de estado (Cancelado -> Pagado)
+      if (status === 'Cancelado') {
+        status = 'Pagado';
+      }
+      
+      // Recalcular estado si tenemos el costo esperado y el monto pagado
+      const expectedAmount = parseFloat(row.expected_amount || 0);
+      const paidAmount = parseFloat(row.paid_amount || row.amount || 0);
+      
+      if (expectedAmount > 0) {
+        if (paidAmount <= 0) {
+          status = 'Pendiente';
+        } else if (paidAmount >= expectedAmount) {
+          status = 'Pagado';
+        } else {
+          status = 'Parcial'; // Se pagó algo pero no todo
+        }
+      } else if (row.notes) {
+        // Si no hay expected_amount, intentar calcular desde las notas
+        const notes = row.notes || '';
+        const costMatch = notes.match(/Costo:\s*S\/\s*([\d.]+)/);
+        const paidMatch = notes.match(/Pagado:\s*S\/\s*([\d.]+)/);
+        
+        if (costMatch && paidMatch) {
+          const costoEsperado = parseFloat(costMatch[1]);
+          const pagado = parseFloat(paidMatch[1]);
+          
+          if (pagado <= 0) {
+            status = 'Pendiente';
+          } else if (pagado >= costoEsperado) {
+            status = 'Pagado';
+          } else {
+            status = 'Parcial';
+          }
+        }
       }
       
       // Verificar si está vencida
       const isOverdue = row.is_overdue;
-      let badgeClass = status === 'Cancelado' ? 'badge-success' : 'badge-warning';
+      let badgeClass = 'badge-warning';
+      if (status === 'Pagado') {
+        badgeClass = 'badge-success';
+      } else if (status === 'Parcial') {
+        badgeClass = 'badge-info';
+      } else if (status === 'Pendiente') {
+        badgeClass = 'badge-warning';
+      }
       if (isOverdue) badgeClass = 'badge-error';
       
       return (
@@ -158,7 +196,8 @@ const PaymentsPage = () => {
       const payload = {
         student_id: Number(form.student_id),
         type: form.type,
-        amount: amountNum,
+        amount: amountNum, // Costo real (ej: 200 para matrícula, 100 para inscripción)
+        paid_amount: amountNum, // Lo que está pagando ahora (será sumado si ya existe un pago)
         method: form.method,
         notes: form.notes || '',
         payer: form.payer,
@@ -187,8 +226,13 @@ const PaymentsPage = () => {
     if (!confirm('¿Eliminar pago?')) return;
     try {
       await deletePayment(row.id);
-      setPayments(prev => prev.filter(p => p.id !== row.id));
-    } catch (_) { alert('Error al eliminar pago'); }
+      // Recargar la lista completa desde el servidor
+      const refreshed = await getAllPayments();
+      setPayments(refreshed);
+    } catch (err) { 
+      console.error('Error al eliminar pago:', err);
+      alert('Error al eliminar pago: ' + (err.message || 'Error desconocido'));
+    }
   };
 
   return (
