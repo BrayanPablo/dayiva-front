@@ -52,7 +52,9 @@ const EnrollmentForm = ({ onSuccess }) => {
     discount_percent: "",
     payment_amount: "",
     payment_date: "",
-    payment_method: "Efectivo"
+    payment_method: "Efectivo",
+    // Pago de inscripción (solo para alumnos nuevos)
+    registration_payment_amount: ""
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -75,7 +77,14 @@ const EnrollmentForm = ({ onSuccess }) => {
     const dd = String(today.getDate()).padStart(2, '0');
     const todayStr = `${yyyy}-${mm}-${dd}`;
     
-    setForm(prev => ({ ...prev, enrollment_code: generateEnrollmentCode(), enrollment_date: todayStr, payment_date: todayStr }));
+    setForm(prev => ({ 
+      ...prev, 
+      enrollment_code: generateEnrollmentCode(), 
+      enrollment_date: todayStr, 
+      payment_date: todayStr,
+      tuition_amount: "200", // Cuota de matrícula por defecto (fijo para todos)
+      registration_amount: "" // Se establecerá cuando se seleccione "Nuevo"
+    }));
   }, []);
 
   const handleInitialStepContinue = (gradeInfo) => {
@@ -89,13 +98,27 @@ const EnrollmentForm = ({ onSuccess }) => {
   };
 
   const handleSituationChange = (e) => {
-    setSituation(e.target.value);
+    const newSituation = e.target.value;
+    setSituation(newSituation);
     setStudent(null);
     setGuardian(null);
     setStudentDetails(null);
     setRelationship("Madre");
     setError("");
-    setForm(prev => ({ ...prev, previous_school: "", tuition_amount: e.target.value === "Promovido" ? "200" : prev.tuition_amount }));
+    // Establecer cuota de matrícula en 200 por defecto (fijo para todos)
+    // Establecer inscripción en 100 si es nuevo
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    
+    setForm(prev => ({ 
+      ...prev, 
+      previous_school: newSituation === "Nuevo" ? "" : "",
+      tuition_amount: "200", // Siempre 200 soles
+      registration_payment_amount: newSituation === "Nuevo" ? "100" : "" // 100 soles si es nuevo
+    }));
   };
 
   const handleSelectStudent = async (selectedStudent) => {
@@ -198,6 +221,7 @@ const EnrollmentForm = ({ onSuccess }) => {
     
     setLoading(true);
     try {
+      const isNew = situation === "Nuevo";
       const res = await registerEnrollment({
         student_id: studentId,
         grade_id: form.grade_id,
@@ -205,21 +229,43 @@ const EnrollmentForm = ({ onSuccess }) => {
         academic_year: form.academic_year,
         status: form.status,
         payment_status: form.payment_status,
-        observations: form.observations === "SI"
+        observations: form.observations === "SI",
+        situation: situation, // "Nuevo" o "Promovido"
+        previous_school: form.previous_school || null,
+        cuota_mensual: 250 // Por defecto 250, se puede ajustar después
       });
 
-      // Registrar pago de matrícula si hay monto
+      // Si es alumno nuevo, crear pago de inscripción
+      if (res?.id && isNew && form.registration_payment_amount) {
+        const registrationAmount = parseFloat(form.registration_payment_amount || 100);
+        if (registrationAmount > 0) {
+          await createPayment({
+            student_id: studentId,
+            enrollment_id: res.id,
+            type: 'Inscripcion',
+            amount: registrationAmount,
+            discount_percent: 0,
+            paid_amount: registrationAmount,
+            method: form.payment_method,
+            payment_date: form.payment_date || form.enrollment_date, // Usa la misma fecha que el pago de matrícula
+          });
+        }
+      }
+
+      // Registrar pago de matrícula (siempre se guarda, incluso si está pendiente)
       const amountNum = parseFloat(form.tuition_amount || 0);
       if (res?.id && amountNum > 0) {
         const discPct = parseFloat(form.discount_percent || 0);
-        const payAmt = parseFloat(form.payment_amount || 0);
+        const payAmt = parseFloat(form.payment_amount || 0); // Puede ser 0 si no se ha pagado nada
+        
+        // Siempre guardamos el pago, incluso si está pendiente
         await createPayment({
           student_id: studentId,
           enrollment_id: res.id,
           type: 'Matricula',
-          amount: amountNum,
+          amount: amountNum, // Costo real de la matrícula (ej: 200 soles)
           discount_percent: discPct,
-          paid_amount: payAmt,
+          paid_amount: payAmt, // Lo que realmente está pagando (puede ser 0, parcial o completo)
           method: form.payment_method,
           payment_date: form.payment_date,
         });
@@ -727,10 +773,25 @@ const EnrollmentForm = ({ onSuccess }) => {
         {error && <div className="text-red-600 p-4 bg-red-50 rounded-lg text-lg">{error}</div>}
         {success && <div className="text-green-600 p-4 bg-green-50 rounded-lg text-lg">{success}</div>}
 
-        {/* Pago de Matrícula (UI) */}
+        {/* Pagos (UI) */}
         <div className="bg-gray-50 p-6 rounded-lg">
-          <h3 className="text-2xl font-semibold mb-4">Pago de Matrícula</h3>
+          <h3 className="text-2xl font-semibold mb-4">Pagos</h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Fila de Inscripción (solo si es nuevo) */}
+            {situation === "Nuevo" && (
+              <div>
+                <label className="block text-lg font-medium text-gray-700 mb-2">Monto a Pagar Inscripción</label>
+                <input
+                  type="number"
+                  name="registration_payment_amount"
+                  value={form.registration_payment_amount}
+                  onChange={handleChange}
+                  placeholder="100.00"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+                />
+              </div>
+            )}
+            {/* Fila de Matrícula */}
             <div>
               <label className="block text-lg font-medium text-gray-700 mb-2">Monto Matrícula</label>
               <input
@@ -794,9 +855,18 @@ const EnrollmentForm = ({ onSuccess }) => {
                 type="text"
                 readOnly
                 value={(function(){
-                  const amount = parseFloat(form.tuition_amount || 0);
-                  const disc = parseFloat(form.discount_percent || 0);
-                  const total = amount - (amount * disc / 100);
+                  // Calcular total de matrícula con descuento
+                  const tuitionAmount = parseFloat(form.tuition_amount || 0);
+                  const tuitionDisc = parseFloat(form.discount_percent || 0);
+                  const tuitionTotal = tuitionAmount - (tuitionAmount * tuitionDisc / 100);
+                  
+                  // Si es nuevo, agregar inscripción
+                  let total = tuitionTotal;
+                  if (situation === "Nuevo") {
+                    const registrationAmount = parseFloat(form.registration_payment_amount || 0);
+                    total = tuitionTotal + registrationAmount;
+                  }
+                  
                   return isNaN(total) ? '' : total.toFixed(2);
                 })()}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 text-lg"

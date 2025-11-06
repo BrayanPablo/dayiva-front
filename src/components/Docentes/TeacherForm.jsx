@@ -93,9 +93,9 @@ const TeacherForm = ({ onSuccess, teacher, isEdit }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg mx-auto bg-white shadow rounded p-6 space-y-4">
-      {error && <div className="text-red-600 text-sm mb-3">{error}</div>}
-      {success && <div className="text-green-600 text-sm mb-3">{success}</div>}
+    <form onSubmit={handleSubmit} className="max-w-lg mx-auto bg-base-100 shadow rounded-box p-6 space-y-4">
+      {error && <div role="alert" className="alert alert-error text-sm">{error}</div>}
+      {success && <div role="alert" className="alert alert-success text-sm">{success}</div>}
       
       <Input
         label="Documento"

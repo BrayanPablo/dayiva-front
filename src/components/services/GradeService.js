@@ -1,13 +1,13 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/api';
+
+const API_URL = '/api/grades';
 
 class GradeService {
   static async getAllGrades() {
     try {
-      const response = await fetch(`${API_BASE_URL}/grades`);
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      return await response.json();
+      const res = await apiGet(API_URL);
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      return await res.json();
     } catch (error) {
       console.error('Error en getAllGrades:', error);
       throw error;
@@ -16,11 +16,9 @@ class GradeService {
 
   static async getGradeById(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/grades/${id}`);
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
-      }
-      return await response.json();
+      const res = await apiGet(`${API_URL}/${id}`);
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      return await res.json();
     } catch (error) {
       console.error('Error en getGradeById:', error);
       throw error;
@@ -29,20 +27,12 @@ class GradeService {
 
   static async createGrade(gradeData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/grades`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(gradeData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+      const res = await apiPost(API_URL, gradeData);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Error ${res.status}`);
       }
-
-      return await response.json();
+      return await res.json();
     } catch (error) {
       console.error('Error en createGrade:', error);
       throw error;
@@ -51,20 +41,12 @@ class GradeService {
 
   static async updateGrade(id, gradeData) {
     try {
-      const response = await fetch(`${API_BASE_URL}/grades/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(gradeData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+      const res = await apiPut(`${API_URL}/${id}`, gradeData);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Error ${res.status}`);
       }
-
-      return await response.json();
+      return await res.json();
     } catch (error) {
       console.error('Error en updateGrade:', error);
       throw error;
@@ -73,16 +55,12 @@ class GradeService {
 
   static async deleteGrade(id) {
     try {
-      const response = await fetch(`${API_BASE_URL}/grades/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Error ${response.status}: ${response.statusText}`);
+      const res = await apiDelete(`${API_URL}/${id}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Error ${res.status}`);
       }
-
-      return await response.json();
+      return await res.json();
     } catch (error) {
       console.error('Error en deleteGrade:', error);
       throw error;

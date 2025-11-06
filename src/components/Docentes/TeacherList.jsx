@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import TeacherForm from "./TeacherForm";
 import DataTable from "../shared/DataTable";
 import Button from "../shared/Button";
+import { apiGet, apiDelete } from "../../utils/api";
 
 const TeacherList = () => {
   const [teachers, setTeachers] = useState([]);
@@ -12,7 +13,7 @@ const TeacherList = () => {
 
   const fetchTeachers = async () => {
     try {
-      const res = await fetch("/api/teachers");
+      const res = await apiGet("/api/teachers");
       if (!res.ok) throw new Error("Error al obtener docentes");
       const data = await res.json();
       setTeachers(data);
@@ -28,7 +29,7 @@ const TeacherList = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("¿Seguro que deseas eliminar este docente?")) return;
     try {
-      const res = await fetch(`/api/teachers/${id}`, { method: "DELETE" });
+      const res = await apiDelete(`/api/teachers/${id}`);
       if (!res.ok) throw new Error("Error al eliminar docente");
       setTeachers(teachers.filter((t) => t.teacher_id !== id));
     } catch (err) {
@@ -48,8 +49,8 @@ const TeacherList = () => {
   return (
     <div className="w-full max-w-full px-3 md:px-6 lg:px-8">
       <div className="w-full">
-        <div className="w-full flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold mb-0 text-black-700">Lista de Docentes</h2>
+        <div className="w-full flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold mb-0">Lista de Docentes</h2>
           <Button
             variant="primary"
             size="large"
@@ -59,8 +60,11 @@ const TeacherList = () => {
             + Agregar Docente
           </Button>
         </div>
-        {error && <div className="text-red-600 text-sm font-medium mb-2">{error}</div>}
-        
+        {error && (
+          <div role="alert" className="alert alert-warning mb-4">
+            <span>{error}</span>
+          </div>
+        )}
         {/* Configuración de columnas para DataTable */}
         {(() => {
           const columns = [
@@ -124,7 +128,7 @@ const TeacherList = () => {
           const searchFields = ['first_name', 'last_name', 'document_id', 'email'];
 
           return (
-            <div className="rounded-2xl shadow-lg border-2 border-yellow-400 bg-white w-full">
+            <div className="w-full">
               <DataTable
                 data={teachers}
                 columns={columns}
@@ -133,7 +137,7 @@ const TeacherList = () => {
                 onEdit={handleEdit}
                 onDelete={(teacher) => handleDelete(teacher.teacher_id)}
                 loading={false}
-                className="border-0"
+                className=""
               />
             </div>
           );
@@ -141,16 +145,16 @@ const TeacherList = () => {
       </div>
       {/* Modal de edición */}
       {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.1)" }}>
-          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md border-4 border-blue-600 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-base-100 rounded-box shadow-xl p-6 w-full max-w-md relative">
             <button
-              className="absolute top-3 right-3 text-blue-600 hover:text-blue-900 text-2xl font-bold"
+              className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
               onClick={() => { setShowEditModal(false); setEditTeacher(null); }}
               title="Cerrar"
             >
-              ×
+              ✕
             </button>
-            <h2 className="text-xl font-bold mb-4 text-blue-700">Editar Docente</h2>
+            <h2 className="text-xl font-bold mb-4">Editar Docente</h2>
             <TeacherForm
               teacher={editTeacher}
               isEdit
@@ -165,16 +169,16 @@ const TeacherList = () => {
       )}
       {/* Modal de agregar */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.1)" }}>
-          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md border-4 border-blue-600 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-base-100 rounded-box shadow-xl p-6 w-full max-w-md relative">
             <button
-              className="absolute top-3 right-3 text-blue-600 hover:text-blue-900 text-2xl font-bold"
+              className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
               onClick={() => { setShowAddModal(false); }}
               title="Cerrar"
             >
-              ×
+              ✕
             </button>
-            <h2 className="text-xl font-bold mb-4 text-blue-700">Agregar Docente</h2>
+            <h2 className="text-xl font-bold mb-4">Agregar Docente</h2>
             <TeacherForm
               onSuccess={() => {
                 setShowAddModal(false);

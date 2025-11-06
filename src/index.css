@@ -1,1 +1,31 @@
 @import "tailwindcss";
+@plugin "daisyui";
+
+/* Animaciones utilitarias */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 400ms ease-out both;
+}
+
+/* Loader animations */
+@keyframes bounce-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-bounce-soft { animation: bounce-soft 800ms ease-in-out infinite; }
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.animate-float-slow { animation: float-slow 3s ease-in-out infinite; }
+
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.animate-progress-indeterminate { animation: progress-indeterminate 1.2s linear infinite; }

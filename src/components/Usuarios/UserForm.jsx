@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Button from "../shared/Button";
 import Input from "../shared/Input";
 import Select from "../shared/Select";
+import { apiPost, apiPut } from "../../utils/api";
 import { useToast } from "../ui/Toast";
 
 const UserForm = ({ onSuccess, user, isEdit }) => {
@@ -44,21 +45,9 @@ const UserForm = ({ onSuccess, user, isEdit }) => {
         try {
             let response;
             if (isEdit && user) {
-                response = await fetch(`/api/users/${user.id}`, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(userData),
-                });
+                response = await apiPut(`/api/users/${user.id}`, userData);
             } else {
-                response = await fetch("/api/auth/register", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(userData),
-                });
+                response = await apiPost("/api/auth/register", userData);
             }
 
             if (response.ok) {

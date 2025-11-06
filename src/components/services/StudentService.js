@@ -8,6 +8,18 @@ export async function fetchStudents() {
 	return res.json();
 }
 
+export async function fetchEnrolledStudentsCurrentYear() {
+  const res = await apiGet(`${API_URL}/enrolled/current`);
+  if (!res.ok) throw new Error('Error al obtener estudiantes matriculados');
+  return res.json();
+}
+
+export async function fetchAllStudentsWithGradeCurrentYear() {
+  const res = await apiGet(`${API_URL}/with-grade/current`);
+  if (!res.ok) throw new Error('Error al obtener estudiantes con grado');
+  return res.json();
+}
+
 export async function registerStudent(data) {
 	const res = await apiPost(API_URL, data);
 	if (!res.ok) throw new Error("Error al registrar estudiante");

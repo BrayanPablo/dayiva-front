@@ -74,41 +74,46 @@ const DataTable = ({
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <span className="loading loading-spinner loading-lg text-primary"></span>
       </div>
     );
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow ${className}`}>
+    <div className={`card bg-base-100 shadow ${className}`}>
       {/* Barra de búsqueda */}
       {searchFields.length > 0 && (
         <div className="p-4 border-b">
-          <input
-            type="text"
-            placeholder="Buscar..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          <label className="input input-bordered flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4 opacity-70">
+              <path fillRule="evenodd" d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" clipRule="evenodd" />
+            </svg>
+            <input
+              type="text"
+              className="grow"
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+            />
+          </label>
         </div>
       )}
 
-      {/* Tabla */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+      {/* Tabla - Responsive con scroll horizontal en móviles */}
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <table className="table table-zebra w-full text-sm sm:text-base">
+          <thead className="hidden sm:table-header-group">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="cursor-pointer whitespace-nowrap"
                   onClick={() => column.sortable && handleSort(column.key)}
                 >
-                  <div className="flex items-center">
-                    {column.label}
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs sm:text-sm">{column.label}</span>
                     {column.sortable && (
-                      <span className="ml-1">
+                      <span className="text-xs">
                         {sortField === column.key ? (
                           sortDirection === 'asc' ? '↑' : '↓'
                         ) : (
@@ -120,28 +125,30 @@ const DataTable = ({
                 </th>
               ))}
               {(onEdit || onDelete || onView || onDownload) && (
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
+                <th className="whitespace-nowrap">
+                  <span className="text-xs sm:text-sm">Acciones</span>
                 </th>
               )}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody>
             {paginatedData.map((item, index) => (
-              <tr key={item.id || index} className="hover:bg-gray-50">
+              <tr key={item.id || index} className="hover">
                 {columns.map((column) => (
-                  <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td key={column.key} className="text-xs sm:text-sm">
+                    <div className="sm:hidden font-semibold mb-1 text-gray-600">{column.label}:</div>
                     {column.render ? column.render(item[column.key], item) : item[column.key]}
                   </td>
                 ))}
                 {(onEdit || onDelete || onView || onDownload) && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
+                  <td>
+                    <div className="flex flex-wrap gap-1 sm:gap-2">
                       {onView && (
                         <Button
                           size="small"
                           variant="outline"
                           onClick={() => onView(item)}
+                          className="text-xs sm:text-sm px-2 py-1"
                         >
                           Ver
                         </Button>
@@ -151,6 +158,7 @@ const DataTable = ({
                           size="small"
                           variant="primary"
                           onClick={() => onEdit(item)}
+                          className="text-xs sm:text-sm px-2 py-1"
                         >
                           Editar
                         </Button>
@@ -160,6 +168,7 @@ const DataTable = ({
                           size="small"
                           variant="secondary"
                           onClick={() => onDownload(item)}
+                          className="text-xs sm:text-sm px-2 py-1"
                         >
                           📄 PDF
                         </Button>
@@ -169,6 +178,7 @@ const DataTable = ({
                           size="small"
                           variant="danger"
                           onClick={() => onDelete(item)}
+                          className="text-xs sm:text-sm px-2 py-1"
                         >
                           Eliminar
                         </Button>
@@ -182,38 +192,48 @@ const DataTable = ({
         </table>
       </div>
 
-      {/* Paginación */}
+      {/* Paginación - Responsive */}
       {totalPages > 1 && (
-        <div className="px-6 py-3 border-t flex items-center justify-between">
-          <div className="text-sm text-gray-700">
+        <div className="px-4 sm:px-6 py-3 border-t flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="text-xs sm:text-sm opacity-70 text-center sm:text-left">
             Mostrando {startIndex + 1} a {Math.min(endIndex, sortedData.length)} de {sortedData.length} resultados
           </div>
-          <div className="flex space-x-2">
+          <div className="join flex-wrap justify-center">
             <Button
               size="small"
               variant="outline"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
+              className="join-item text-xs sm:text-sm"
             >
-              Anterior
+              «
             </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-              <Button
-                key={page}
-                size="small"
-                variant={page === currentPage ? 'primary' : 'outline'}
-                onClick={() => handlePageChange(page)}
-              >
-                {page}
-              </Button>
-            ))}
+            {/* En móviles, mostrar menos páginas */}
+            <div className="hidden sm:flex">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <Button
+                  key={page}
+                  size="small"
+                  variant={page === currentPage ? 'primary' : 'outline'}
+                  onClick={() => handlePageChange(page)}
+                  className="join-item text-xs sm:text-sm"
+                >
+                  {page}
+                </Button>
+              ))}
+            </div>
+            {/* En móviles, mostrar solo página actual y total */}
+            <div className="sm:hidden flex items-center gap-2">
+              <span className="text-xs">Página {currentPage} de {totalPages}</span>
+            </div>
             <Button
               size="small"
               variant="outline"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
+              className="join-item text-xs sm:text-sm"
             >
-              Siguiente
+              »
             </Button>
           </div>
         </div>

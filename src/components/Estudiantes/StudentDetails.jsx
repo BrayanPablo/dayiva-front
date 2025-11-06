@@ -52,30 +52,41 @@ const StudentDetails = ({ student, onClose, onUpdate }) => {
   const [loading, setLoading] = useState(false);
   const { show } = useToast();
 
-  // Debug: mostrar formData actual
-  console.log('formData actual:', formData);
-  console.log('Campos específicos - first_name:', formData.first_name, 'last_name:', formData.last_name, 'code:', formData.code);
+  // Helper para dividir full_name en first/last si faltan
+  const splitName = (full) => {
+    if (!full) return { first: '', last: '' };
+    const parts = String(full).trim().split(/\s+/);
+    if (parts.length === 1) return { first: parts[0], last: '' };
+    // Toma el último token como apellido y el resto como nombres (heurística simple)
+    const last = parts.pop();
+    const first = parts.join(' ');
+    return { first, last };
+  };
 
-  // Actualizar datos del formulario cuando cambie el estudiante
+  // Actualizar datos del formulario cuando cambie el estudiante, con fallback desde full_name
   useEffect(() => {
-    console.log('🔍 DEBUGGING - useEffect ejecutado');
-    console.log('🔍 DEBUGGING - student object:', student);
-    console.log('🔍 DEBUGGING - Object.keys(student):', Object.keys(student || {}));
-    console.log('🔍 DEBUGGING - first_name:', student?.first_name);
-    console.log('🔍 DEBUGGING - last_name:', student?.last_name);
-    console.log('🔍 DEBUGGING - code:', student?.code);
-    console.log('🔍 DEBUGGING - father_dni:', student?.father_dni);
-    console.log('🔍 DEBUGGING - father_first_name:', student?.father_first_name);
-    console.log('🔍 DEBUGGING - mother_dni:', student?.mother_dni);
-    console.log('🔍 DEBUGGING - mother_first_name:', student?.mother_first_name);
-    console.log('🔍 DEBUGGING - student existe?', !!student);
-    console.log('🔍 DEBUGGING - student es truthy?', student ? 'SÍ' : 'NO');
     if (student) {
-      console.log('🔍 DEBUGGING - Entrando al if (student)');
+      // Fallback para padre
+      let fatherFirst = student?.father_first_name || '';
+      let fatherLast = student?.father_last_name || '';
+      if (!fatherFirst && !fatherLast && student?.father_full_name) {
+        const s = splitName(student.father_full_name);
+        fatherFirst = s.first;
+        fatherLast = s.last;
+      }
+      // Fallback para madre
+      let motherFirst = student?.mother_first_name || '';
+      let motherLast = student?.mother_last_name || '';
+      if (!motherFirst && !motherLast && student?.mother_full_name) {
+        const s = splitName(student.mother_full_name);
+        motherFirst = s.first;
+        motherLast = s.last;
+      }
+
       const newFormData = {
-        code: student?.school_code || '', // Usar school_code como código
-        first_name: student?.full_name || '', // Usar full_name como first_name
-        last_name: student?.surnames || '', // Usar surnames como last_name
+        code: student?.school_code || '',
+        first_name: student?.full_name || '',
+        last_name: student?.surnames || '',
         identity_document: student?.identity_document || '',
         birth_date: student?.birth_date || '',
         age: student?.age || '',
@@ -83,15 +94,15 @@ const StudentDetails = ({ student, onClose, onUpdate }) => {
         city: student?.city || '',
         address: student?.address || '',
         phone_number: student?.phone_number || '',
-        siblings_number: student?.num_siblings || '', // Usar num_siblings
+        siblings_number: student?.num_siblings || '',
         allergies: student?.allergies || '',
         serious_accidents: student?.serious_accidents || '',
-        previous_school: student?.school_name || '', // Usar school_name
+        previous_school: student?.school_name || '',
         status: student?.status || 'Activo',
-        // Datos del padre
+        // Padre (con fallback)
         father_dni: student?.father_dni || '',
-        father_first_name: student?.father_first_name || '',
-        father_last_name: student?.father_last_name || '',
+        father_first_name: fatherFirst,
+        father_last_name: fatherLast,
         father_birth_date: student?.father_birth_date || '',
         father_email: student?.father_email || '',
         father_phone: student?.father_phone || '',
@@ -101,10 +112,10 @@ const StudentDetails = ({ student, onClose, onUpdate }) => {
         father_occupation: student?.father_occupation || '',
         father_sport: student?.father_sport || '',
         father_relationship: student?.father_relationship || 'Padre',
-        // Datos de la madre
+        // Madre (con fallback)
         mother_dni: student?.mother_dni || '',
-        mother_first_name: student?.mother_first_name || '',
-        mother_last_name: student?.mother_last_name || '',
+        mother_first_name: motherFirst,
+        mother_last_name: motherLast,
         mother_birth_date: student?.mother_birth_date || '',
         mother_email: student?.mother_email || '',
         mother_phone: student?.mother_phone || '',
@@ -115,18 +126,12 @@ const StudentDetails = ({ student, onClose, onUpdate }) => {
         mother_sport: student?.mother_sport || '',
         mother_relationship: student?.mother_relationship || 'Madre'
       };
-      
-      console.log('🔍 DEBUGGING - newFormData creado:', newFormData);
-      console.log('🔍 DEBUGGING - father_dni en newFormData:', newFormData.father_dni);
-      console.log('🔍 DEBUGGING - father_first_name en newFormData:', newFormData.father_first_name);
-      console.log('Actualizando formData con:', newFormData);
       setFormData(newFormData);
     }
   }, [student]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    console.log('Cambiando campo:', name, 'a valor:', value);
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -151,7 +156,7 @@ const StudentDetails = ({ student, onClose, onUpdate }) => {
         serious_accidents: '',
         previous_school: '',
         status: 'Activo',
-        // Datos del padre
+        // Padre
         father_dni: '',
         father_first_name: '',
         father_last_name: '',
@@ -160,11 +165,11 @@ const StudentDetails = ({ student, onClose, onUpdate }) => {
         father_phone: '',
         father_address: '',
         father_civil_status: '',
-      father_profession: '',
-      father_occupation: '',
-      father_sport: '',
-      father_relationship: 'Padre',
-      // Datos de la madre
+        father_profession: '',
+        father_occupation: '',
+        father_sport: '',
+        father_relationship: 'Padre',
+        // Madre
         mother_dni: '',
         mother_first_name: '',
         mother_last_name: '',
@@ -173,23 +178,19 @@ const StudentDetails = ({ student, onClose, onUpdate }) => {
         mother_phone: '',
         mother_address: '',
         mother_civil_status: '',
-      mother_profession: '',
-      mother_occupation: '',
-      mother_sport: '',
-      mother_relationship: 'Madre'
-    });
+        mother_profession: '',
+        mother_occupation: '',
+        mother_sport: '',
+        mother_relationship: 'Madre'
+      });
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
     try {
-      // Crear FormData para capturar todos los campos del formulario
       const formDataObj = new FormData(e.target);
-      
-      // Preparar datos del estudiante
       const studentData = {
         identity_document: formData.identity_document,
         first_name: formData.first_name,
@@ -204,7 +205,7 @@ const StudentDetails = ({ student, onClose, onUpdate }) => {
         allergies: formData.allergies,
         serious_accidents: formData.serious_accidents,
         status: formData.status,
-        // Datos del padre
+        // Padre
         father_dni: formDataObj.get('father_dni') || '',
         father_first_name: formDataObj.get('father_first_name') || '',
         father_last_name: formDataObj.get('father_last_name') || '',
@@ -216,7 +217,7 @@ const StudentDetails = ({ student, onClose, onUpdate }) => {
         father_profession: formDataObj.get('father_profession') || '',
         father_occupation: formDataObj.get('father_occupation') || '',
         father_sport: formDataObj.get('father_sport') || '',
-        // Datos de la madre
+        // Madre
         mother_dni: formDataObj.get('mother_dni') || '',
         mother_first_name: formDataObj.get('mother_first_name') || '',
         mother_last_name: formDataObj.get('mother_last_name') || '',
@@ -229,9 +230,6 @@ const StudentDetails = ({ student, onClose, onUpdate }) => {
         mother_occupation: formDataObj.get('mother_occupation') || '',
         mother_sport: formDataObj.get('mother_sport') || ''
       };
-
-      console.log('Datos a enviar:', studentData);
-      
       await updateStudent(student.id, studentData);
       show({ title: 'Éxito', message: 'Datos actualizados correctamente', type: 'success' });
       if (onUpdate) onUpdate(studentData);

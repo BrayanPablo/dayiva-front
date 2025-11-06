@@ -8,7 +8,6 @@ const TeachersPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log("[TEACHERSPAGE] isAuthenticated:", isAuthenticated, "role:", role);
     if (!isAuthenticated || role?.toLowerCase() !== "admin") {
       navigate("/403");
     }
@@ -18,21 +17,13 @@ const TeachersPage = () => {
     return null;
   }
 
-  console.log("[TEACHERSPAGE] Render", { isAuthenticated, role });
-
   return (
-    <div className="min-h-screen bg-base-200 flex flex-col items-start justify-start pt-8 w-full">
-      <header className="bg-base-100 border-b border-base-200 w-full">
-        <div className="w-full px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-base-content">Gestionar Docentes</h1>
-        </div>
-      </header>
-
-      <main className="w-full px-6 py-6">
-        <TeacherList />
-      </main>
+    <div className="w-full">
+      <TeacherList />
     </div>
   );
 };
 
 export default TeachersPage;
+
+

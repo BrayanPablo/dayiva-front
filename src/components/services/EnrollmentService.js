@@ -16,6 +16,13 @@ export async function fetchEnrollmentById(id) {
   return res.json();
 }
 
+// Obtener matrícula completa (para ficha)
+export async function fetchEnrollmentFullById(id) {
+  const res = await apiGet(`${API_URL}/${id}/full`);
+  if (!res.ok) throw new Error("Error al obtener matrícula completa");
+  return res.json();
+}
+
 // Registrar matrícula
 export async function registerEnrollment(data) {
   const res = await apiPost(API_URL, data);
