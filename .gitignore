@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Documentation files with sensitive info (move to root or docs folder)
+PASOS_VARIABLE_ENTORNO.md
+VERCEL_DEPLOYMENT_INFO.md
+COMO_VER_MOVIL.md

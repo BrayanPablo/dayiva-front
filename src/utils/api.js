@@ -1,6 +1,9 @@
 // Utilidad para hacer peticiones API con autenticación automática
 export const apiRequest = async (url, options = {}) => {
-  const apiBase = import.meta?.env?.VITE_API_URL || 'https://dayiva-back-production.up.railway.app';
+  const apiBase = import.meta?.env?.VITE_API_URL;
+  if (!apiBase) {
+    throw new Error('VITE_API_URL no está configurada. Configura la variable de entorno en Vercel.');
+  }
   const fullUrl = /^https?:\/\//i.test(url) ? url : `${apiBase}${url}`;
   const token = localStorage.getItem('token');
   

@@ -1,8 +1,9 @@
-// SIMULADO por ahora. Cambia esto por llamadas reales a tu API cuando la tengas.
 export async function loginRequest(username, password) {
-  // Llamada real al backend para login (usa VITE_API_URL si está definida)
-  const base = import.meta?.env?.VITE_API_URL || 'https://dayiva-back-production.up.railway.app';
-  const url = base ? `${base}/api/auth/login` : "/api/auth/login";
+  const base = import.meta?.env?.VITE_API_URL;
+  if (!base) {
+    throw new Error('VITE_API_URL no está configurada. Configura la variable de entorno en Vercel.');
+  }
+  const url = `${base}/api/auth/login`;
   const response = await fetch(url, {
     method: "POST",
     headers: {
