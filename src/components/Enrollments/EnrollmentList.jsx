@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import html2pdf from "html2pdf.js";
 import { useToast } from "../ui/Toast";
 import { fetchEnrollments, deleteEnrollment, fetchEnrollmentFullById } from "../services/EnrollmentService";
@@ -6,6 +7,7 @@ import EnrollmentReceipt from "./EnrollmentReceipt";
 
 const EnrollmentList = ({ refresh }) => {
   const toast = useToast();
+  const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState([]);
   const [filteredEnrollments, setFilteredEnrollments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -16,6 +18,37 @@ const EnrollmentList = ({ refresh }) => {
   const [selectedGradeLevel, setSelectedGradeLevel] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const enrollmentsPerPage = 10;
+
+  const safeText = (value) => (value === null || value === undefined ? '' : String(value).trim());
+
+  const getStudentParts = (enrollment) => {
+    const surnamesRaw = safeText(enrollment.student_surnames);
+    const namesRaw = safeText(enrollment.student_names);
+    if (surnamesRaw || namesRaw) {
+      return {
+        surnames: surnamesRaw,
+        names: namesRaw,
+      };
+    }
+
+    const full = safeText(enrollment.student);
+    if (!full) {
+      return { surnames: '', names: '' };
+    }
+
+    const parts = full.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) {
+      return { surnames: '', names: parts[0] };
+    }
+
+    const surnamesGuess = parts.slice(0, Math.min(2, parts.length - 1)).join(' ');
+    const namesGuess = parts.slice(Math.min(2, parts.length - 1)).join(' ') || parts[parts.length - 1];
+
+    return {
+      surnames: surnamesGuess,
+      names: namesGuess,
+    };
+  };
   const pdfRef = useRef(null);
 
   const loadEnrollments = async () => {
@@ -41,9 +74,12 @@ const EnrollmentList = ({ refresh }) => {
 
     // Filtrar por nombre del estudiante
     if (searchTerm !== '') {
-      filtered = filtered.filter(enrollment => 
-        (enrollment.student && enrollment.student.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(enrollment => {
+        const { surnames, names } = getStudentParts(enrollment);
+        const combined = `${surnames} ${names} ${safeText(enrollment.student)}`.toLowerCase();
+        return combined.includes(term);
+      });
     }
 
     // Filtrar por grado y nivel
@@ -223,6 +259,14 @@ const EnrollmentList = ({ refresh }) => {
     alert('Funcionalidad de edición pendiente');
   };
 
+  const handleShowPaymentHistory = (enrollment) => {
+    if (!enrollment?.student_id) {
+      toast.show({ title: 'Información incompleta', message: 'No se encontró el estudiante asociado a esta matrícula.', type: 'warning', duration: 3000 });
+      return;
+    }
+    navigate(`/students/${enrollment.student_id}/payments`);
+  };
+
   return (
     <div className="w-full">
       {/* Barra de búsqueda y filtros */}
@@ -289,7 +333,10 @@ const EnrollmentList = ({ refresh }) => {
                   <thead className="">
                     <tr>
                       <th className="p-4 text-left text-xs font-semibold uppercase">
-                        Estudiante
+                        Apellidos
+                      </th>
+                      <th className="p-4 text-left text-xs font-semibold uppercase">
+                        Nombres
                       </th>
                       <th className="p-4 text-left text-xs font-semibold uppercase">
                         Grado
@@ -316,11 +363,18 @@ const EnrollmentList = ({ refresh }) => {
                         </td>
                       </tr>
                     ) : (
-                      currentEnrollments.map((enrollment) => (
+                      currentEnrollments.map((enrollment) => {
+                        const { surnames, names } = getStudentParts(enrollment);
+                        return (
                         <tr key={enrollment.id} className="hover">
                           <td className="p-4">
                             <div className="font-medium text-gray-900">
-                              {enrollment.student || 'N/A'}
+                              {surnames || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="font-medium text-gray-900">
+                              {names || 'N/A'}
                             </div>
                           </td>
                           <td className="p-4">
@@ -359,6 +413,15 @@ const EnrollmentList = ({ refresh }) => {
                                 </svg>
                               </button>
                               <button
+                                onClick={() => handleShowPaymentHistory(enrollment)}
+                                className="w-8 h-8 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center transition-colors shadow-md hover:shadow-lg"
+                                title="Historial de pagos"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.306 0 2.418.835 2.84 2m-2.84-2V6m0 10v2m7-10a9 9 0 11-14 7.5" />
+                                </svg>
+                              </button>
+                              <button
                                 onClick={() => handlePrintHtml(enrollment)}
                                 className="w-8 h-8 rounded-full bg-purple-500 hover:bg-purple-600 text-white flex items-center justify-center transition-colors shadow-md hover:shadow-lg"
                                 title="Imprimir ficha"
@@ -379,7 +442,8 @@ const EnrollmentList = ({ refresh }) => {
                             </div>
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

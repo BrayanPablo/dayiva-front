@@ -43,3 +43,9 @@ export async function deleteStudent(id) {
 	if (!res.ok) throw new Error("Error al eliminar estudiante");
 	return res.json();
 }
+
+export async function fetchStudentPaymentHistory(id) {
+  const res = await apiGet(`${API_URL}/${id}/payment-history`);
+  if (!res.ok) throw new Error("Error al obtener historial de pagos del estudiante");
+  return res.json();
+}

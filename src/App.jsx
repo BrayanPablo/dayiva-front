@@ -10,6 +10,7 @@ import WelcomePage from "./components/pages/WelcomePage.jsx";
 import StudentForm from "./components/Estudiantes/StudentForm.jsx";
 import StudentRegistrationPage from "./components/pages/StudentRegistrationPage.jsx";
 import StudentDetailsPage from "./components/pages/StudentDetailsPage.jsx";
+import StudentPaymentHistoryPage from "./components/pages/StudentPaymentHistoryPage.jsx";
 import GradesPage from "./components/pages/GradesPage.jsx";
 import GuardianForm from "./components/Apoderados/GuardianForm.jsx";
 import EnrollmentForm from "./components/Enrollments/EnrollmentForm.jsx";
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="/students" element={<StudentForm />} />
               <Route path="/students/register" element={<StudentRegistrationPage />} />
               <Route path="/students/:id" element={<StudentDetailsPage />} />
+              <Route path="/students/:id/payments" element={<StudentPaymentHistoryPage />} />
               <Route path="/guardians" element={<GuardianForm />} />
               <Route path="/grades" element={<GradesPage />} />
               <Route path="/enrollments" element={<EnrollmentsPage />} />

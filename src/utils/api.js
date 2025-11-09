@@ -1,6 +1,6 @@
 // Utilidad para hacer peticiones API con autenticación automática
 export const apiRequest = async (url, options = {}) => {
-  const apiBase = import.meta?.env?.VITE_API_URL;
+  const apiBase = import.meta?.env?.VITE_API_URL || (import.meta.env?.DEV ? 'http://localhost:5000' : '');
   if (!apiBase) {
     throw new Error('VITE_API_URL no está configurada. Configura la variable de entorno en Vercel.');
   }

@@ -51,7 +51,9 @@ const StudentDetailsPage = () => {
 
   // Helper para mostrar valor o placeholder
   const showValue = (value, placeholder = 'No especificado') => {
-    return value && value.trim() !== '' ? value : placeholder;
+    if (value === null || value === undefined) return placeholder;
+    const normalized = String(value).trim();
+    return normalized !== '' ? normalized : placeholder;
   };
 
   if (loading) {

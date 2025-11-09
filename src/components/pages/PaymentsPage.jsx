@@ -5,6 +5,8 @@ import { getAllPayments, createPayment, deletePayment, updatePayment } from '../
 import { fetchStudents } from '../services/StudentService';
 import StudentSearchModal from '../Estudiantes/StudentSearchModal';
 
+const safeText = (value) => (value === null || value === undefined ? '' : String(value).trim());
+
 const PaymentsPage = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,10 +19,8 @@ const PaymentsPage = () => {
     method: 'Efectivo',
     notes: '',
     payer: 'Padre',
-    // Campos para mensualidades
     month: '',
     academic_year: '',
-    // Fecha de pago
     payment_date: new Date().toISOString().split('T')[0]
   });
   const [showStudentModal, setShowStudentModal] = useState(false);
@@ -29,20 +29,20 @@ const PaymentsPage = () => {
     const load = async () => {
       setLoading(true);
       try {
-      const [pays, studs] = await Promise.all([
-        getAllPayments(),
-        fetchStudents()
-      ]);
-      
-      // Debug: Log para ver qué datos estamos recibiendo
-      console.log('📋 Pagos recibidos:', pays);
-      if (pays.length > 0) {
-        console.log('🔍 Primer pago:', pays[0]);
-      }
-      
-      setPayments(pays);
-      setStudents(studs);
-      } catch (_) {
+        const [pays, studs] = await Promise.all([
+          getAllPayments(),
+          fetchStudents()
+        ]);
+        
+        console.log('📋 Pagos recibidos:', pays);
+        if (pays.length > 0) {
+          console.log('🔍 Primer pago:', pays[0]);
+        }
+
+        setPayments(pays);
+        setStudents(studs);
+      } catch (error) {
+        console.error('Error al cargar pagos:', error);
         setPayments([]);
       } finally {
         setLoading(false);
@@ -53,37 +53,34 @@ const PaymentsPage = () => {
 
   const columns = [
     { key: 'id', label: 'Código', sortable: true },
-    { key: 'student_names', label: 'Estudiante', sortable: true, render: (v, row) => {
-      const surnames = (row.student_surnames || '').trim();
-      let namesOnly = (row.student_names || '').trim();
+    { key: 'student_surnames', label: 'Apellidos', sortable: true, render: (v) => safeText(v) || '-' },
+    { key: 'student_names', label: 'Nombres', sortable: true, render: (v, row) => {
+      const surnames = safeText(row.student_surnames);
+      let namesOnly = safeText(v);
       if (surnames && namesOnly.toLowerCase().startsWith(surnames.toLowerCase())) {
         namesOnly = namesOnly.substring(surnames.length).trim();
       }
-      return `${row.student_surnames || ''} ${namesOnly}`.trim();
+      return namesOnly || '-';
     } },
     { key: 'type', label: 'Concepto', sortable: true, render: (v, row) => {
-      // Si es mensualidad, extraer el mes de las notas o del campo month
       if (v === 'Mensualidad') {
         let monthName = null;
-        
-        // Intentar obtener el mes del campo month
+
         if (row.month) {
           const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-          monthName = months[parseInt(row.month) - 1] || `Mes ${row.month}`;
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+          monthName = months[parseInt(row.month, 10) - 1] || `Mes ${row.month}`;
         }
-        
-        // Si no hay month, intentar extraer de notes
+
         if (!monthName && row.notes) {
           console.log('🔍 Buscando mes en notes:', row.notes);
-          // Buscar patrón "Mes: Enero (2025)" o similar
-          const monthMatch = row.notes.match(/Mes:\s*(\w+)/);
+          const monthMatch = String(row.notes).match(/Mes:\s*(\w+)/);
           console.log('🔍 Resultado regex:', monthMatch);
           if (monthMatch) {
             monthName = monthMatch[1];
           }
         }
-        
+
         if (monthName) {
           return `${v} - ${monthName}`;
         }
@@ -91,7 +88,6 @@ const PaymentsPage = () => {
       return v;
     } },
     { key: 'amount', label: 'Importe', sortable: true, render: (v, row) => {
-      // Usar display_amount si está disponible (calculado en backend)
       const amountToShow = row.display_amount !== undefined 
         ? row.display_amount 
         : (row.type === 'Mensualidad' && row.paid_amount !== undefined) 
@@ -103,36 +99,32 @@ const PaymentsPage = () => {
       v ? new Date(v).toLocaleDateString('es-PE') : '-'
     ) },
     { key: 'status', label: 'Estado', sortable: true, render: (v, row) => {
-      // Usar el estado que viene del backend (Pendiente, Parcial, Pagado)
       let status = v || row.estado || 'Pendiente';
-      
-      // Normalizar nombres de estado (Cancelado -> Pagado)
+
       if (status === 'Cancelado') {
         status = 'Pagado';
       }
-      
-      // Recalcular estado si tenemos el costo esperado y el monto pagado
+
       const expectedAmount = parseFloat(row.expected_amount || 0);
       const paidAmount = parseFloat(row.paid_amount || row.amount || 0);
-      
+
       if (expectedAmount > 0) {
         if (paidAmount <= 0) {
           status = 'Pendiente';
         } else if (paidAmount >= expectedAmount) {
           status = 'Pagado';
         } else {
-          status = 'Parcial'; // Se pagó algo pero no todo
+          status = 'Parcial';
         }
       } else if (row.notes) {
-        // Si no hay expected_amount, intentar calcular desde las notas
-        const notes = row.notes || '';
+        const notes = safeText(row.notes);
         const costMatch = notes.match(/Costo:\s*S\/\s*([\d.]+)/);
         const paidMatch = notes.match(/Pagado:\s*S\/\s*([\d.]+)/);
-        
+
         if (costMatch && paidMatch) {
           const costoEsperado = parseFloat(costMatch[1]);
           const pagado = parseFloat(paidMatch[1]);
-          
+
           if (pagado <= 0) {
             status = 'Pendiente';
           } else if (pagado >= costoEsperado) {
@@ -142,8 +134,7 @@ const PaymentsPage = () => {
           }
         }
       }
-      
-      // Verificar si está vencida
+
       const isOverdue = row.is_overdue;
       let badgeClass = 'badge-warning';
       if (status === 'Pagado') {
@@ -154,7 +145,7 @@ const PaymentsPage = () => {
         badgeClass = 'badge-warning';
       }
       if (isOverdue) badgeClass = 'badge-error';
-      
+
       return (
         <div className="flex flex-col gap-1">
           <span className={`badge ${badgeClass}`}>{status}</span>
@@ -196,15 +187,14 @@ const PaymentsPage = () => {
       const payload = {
         student_id: Number(form.student_id),
         type: form.type,
-        amount: amountNum, // Costo real (ej: 200 para matrícula, 100 para inscripción)
-        paid_amount: amountNum, // Lo que está pagando ahora (será sumado si ya existe un pago)
+        amount: amountNum,
+        paid_amount: amountNum,
         method: form.method,
         notes: form.notes || '',
         payer: form.payer,
         payment_date: form.payment_date
       };
 
-      // Agregar campos específicos para mensualidades
       if (form.type === 'Mensualidad') {
         if (!form.month || !form.academic_year) {
           alert('Para mensualidades debe seleccionar mes y año académico');
@@ -213,11 +203,13 @@ const PaymentsPage = () => {
         payload.month = Number(form.month);
         payload.academic_year = form.academic_year;
       }
-      const res = await createPayment(payload);
+
+      await createPayment(payload);
       const refreshed = await getAllPayments();
       setPayments(refreshed);
       setShowForm(false);
     } catch (err) {
+      console.error('Error al registrar pago:', err);
       alert('Error al registrar pago');
     }
   };
@@ -226,7 +218,6 @@ const PaymentsPage = () => {
     if (!confirm('¿Eliminar pago?')) return;
     try {
       await deletePayment(row.id);
-      // Recargar la lista completa desde el servidor
       const refreshed = await getAllPayments();
       setPayments(refreshed);
     } catch (err) { 
@@ -264,10 +255,10 @@ const PaymentsPage = () => {
                     value={(function(){
                       const s = students.find(x => String(x.id) === String(form.student_id));
                       if (!s) return '';
-                      const surnames = (s.surnames || '').trim();
-                      let namesOnly = (s.full_name || '').trim();
+                      const surnames = safeText(s.surnames);
+                      let namesOnly = safeText(s.full_name);
                       if (surnames && namesOnly.toLowerCase().startsWith(surnames.toLowerCase())) namesOnly = namesOnly.substring(surnames.length).trim();
-                      return `${s.identity_document} - ${s.surnames} ${namesOnly}`;
+                      return `${s.identity_document || ''} - ${surnames} ${namesOnly}`.trim();
                     })()}
                     placeholder="Seleccione estudiante"
                     readOnly
@@ -300,11 +291,11 @@ const PaymentsPage = () => {
                     <option value="Efectivo">Efectivo</option>
                     <option value="Yape">Yape</option>
                     <option value="Transferencia">Transferencia</option>
+                    <option value="Otro">Otro</option>
                   </select>
                 </div>
               </div>
 
-              {/* Campos específicos para mensualidades */}
               {form.type === 'Mensualidad' && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -421,5 +412,4 @@ const PaymentsPage = () => {
 };
 
 export default PaymentsPage;
-
 

@@ -1,5 +1,5 @@
 export async function loginRequest(username, password) {
-  const base = import.meta?.env?.VITE_API_URL;
+  const base = import.meta?.env?.VITE_API_URL || (import.meta.env?.DEV ? 'http://localhost:5000' : '');
   if (!base) {
     throw new Error('VITE_API_URL no está configurada. Configura la variable de entorno en Vercel.');
   }

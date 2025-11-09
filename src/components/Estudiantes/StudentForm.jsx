@@ -64,6 +64,11 @@ const StudentForm = () => {
     }
   };
 
+  const handlePaymentHistory = (student) => {
+    if (!student?.id) return;
+    navigate(`/students/${student.id}/payments`);
+  };
+
   const handleUpdateStudent = async (updatedData) => {
     try {
       // Obtener datos actualizados del estudiante desde el backend
@@ -255,6 +260,15 @@ const StudentForm = () => {
                                   </svg>
                             </button>
                             <button
+                                  onClick={() => handlePaymentHistory(stu)}
+                                  className="text-emerald-600 hover:text-emerald-900 p-2 rounded-md hover:bg-emerald-50 transition-colors"
+                                  title="Historial de pagos"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.306 0 2.418.835 2.84 2m-2.84-2V6m0 10v2m7-10a9 9 0 11-14 7.5" />
+                                  </svg>
+                                </button>
+                                <button
                                   onClick={() => handleDeleteStudent(stu.id)}
                                   className="text-red-600 hover:text-red-900 p-2 rounded-md hover:bg-red-50 transition-colors"
                                   title="Eliminar estudiante"
